@@ -1,1 +1,9 @@
 *.py?
+
+# Ignore pycharm IDE files
+.idea
+
+
+# Ignore builds
+build
+
