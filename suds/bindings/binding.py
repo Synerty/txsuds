@@ -19,12 +19,12 @@ Provides classes for (WS) SOAP bindings.
 """
 
 from logging import getLogger
-from suds import *
+from suds import WebFault, TypeNotFound
 from suds.sax import Namespace
 from suds.sax.parser import Parser
 from suds.sax.document import Document
 from suds.sax.element import Element
-from suds.sudsobject import Factory, Object
+from suds.sudsobject import Factory
 from suds.mx import Content
 from suds.mx.literal import Literal as MxLiteral
 from suds.umx.basic import Basic as UmxBasic
@@ -32,11 +32,13 @@ from suds.umx.typed import Typed as UmxTyped
 from suds.bindings.multiref import MultiRef
 from suds.xsd.query import TypeQuery, ElementQuery
 from suds.xsd.sxbasic import Element as SchemaElement
-from suds.options import Options
 from suds.plugin import PluginContainer
 from copy import deepcopy
 
 log = getLogger(__name__)
+
+envns = ('SOAP-ENV', 'http://schemas.xmlsoap.org/soap/envelope/')
+# envns = ('soapenv', 'http://schemas.xmlsoap.org/soap/envelope/')
 
 
 class Binding:
@@ -53,7 +55,7 @@ class Binding:
     @type options: L{Options}
     """
 
-    replyfilter = (lambda s,r: r)
+    replyfilter = lambda s, r: r
 
     def __init__(self, wsdl):
         """
@@ -127,15 +129,16 @@ class Binding:
 
     def get_reply(self, method, reply):
         """
-        Process the I{reply} for the specified I{method} by sax parsing the I{reply}
-        and then unmarshalling into python object(s).
+        Process the I{reply} for the specified I{method} by sax parsing the
+        I{reply} and then unmarshalling into python object(s).
         @param method: The name of the invoked method.
         @type method: str
-        @param reply: The reply XML received after invoking the specified method.
+        @param reply: The reply XML received after invoking the specified
+            method.
         @type reply: str
-        @return: The unmarshalled reply.  The returned value is an L{Object} for a
-            I{list} depending on whether the service returns a single object or a
-            collection.
+        @return: The unmarshalled reply.  The returned value is an L{Object}
+            for a I{list} depending on whether the service returns a single
+            object or a collection.
         @rtype: tuple ( L{Element}, L{Object} )
         """
         reply = self.replyfilter(reply)
@@ -171,8 +174,7 @@ class Binding:
         @type body: L{Element}
         @raise WebFault: When found.
         """
-        env_ns = self.wsdl.options.envns
-        fault = body.getChild('Fault', env_ns)
+        fault = body.getChild('Fault', envns)
         if fault is None:
             return
         unmarshaller = self.unmarshaller(False)
@@ -181,10 +183,10 @@ class Binding:
             raise WebFault(p, fault)
         return self
 
-
     def replylist(self, rt, nodes):
         """
-        Construct a I{list} reply.  This mehod is called when it has been detected
+        Construct a I{list} reply.  This mehod is called when it has been
+            detected
         that the reply is a list.
         @param rt: The return I{type}.
         @type rt: L{suds.xsd.sxbase.SchemaObject}
@@ -237,16 +239,17 @@ class Binding:
                     setattr(composite, tag, sobject)
             else:
                 if not isinstance(value, list):
-                    value = [value,]
+                    value = [value, ]
                     setattr(composite, tag, value)
                 value.append(sobject)
         return composite
 
     def get_fault(self, reply):
         """
-        Extract the fault from the specified soap reply.  If I{faults} is True, an
-        exception is raised.  Otherwise, the I{unmarshalled} fault L{Object} is
-        returned.  This method is called when the server raises a I{web fault}.
+        Extract the fault from the specified soap reply.  If I{faults} is True,
+        an exception is raised.  Otherwise, the I{unmarshalled} fault L{Object}
+        is returned.  This method is called when the server raises a
+        I{web fault}.
         @param reply: A soap reply message.
         @type reply: str
         @return: A fault object.
@@ -317,8 +320,7 @@ class Binding:
         @return: The soap envelope containing the body and header.
         @rtype: L{Element}
         """
-        env_ns = self.wsdl.options.envns
-        env = Element('Envelope', ns=env_ns)
+        env = Element('Envelope', ns=envns)
         env.addPrefix(Namespace.xsins[0], Namespace.xsins[1])
         env.append(header)
         env.append(body)
@@ -332,8 +334,7 @@ class Binding:
         @return: the soap body fragment.
         @rtype: L{Element}
         """
-        env_ns = self.wsdl.options.envns
-        header = Element('Header', ns=env_ns)
+        header = Element('Header', ns=envns)
         header.append(content)
         return header
 
@@ -365,17 +366,18 @@ class Binding:
         if wsse is not None:
             content.append(wsse.xml())
         headers = self.options().soapheaders
-        if not isinstance(headers, (tuple,list,dict)):
+        if not isinstance(headers, (tuple, list, dict)):
             headers = (headers,)
         if len(headers) == 0:
             return content
         pts = self.headpart_types(method)
-        if isinstance(headers, (tuple,list)):
+        if isinstance(headers, (tuple, list)):
             for header in headers:
                 if isinstance(header, Element):
                     content.append(deepcopy(header))
                     continue
-                if len(pts) == n: break
+                if len(pts) == n:
+                    break
                 h = self.mkheader(method, pts[n], header)
                 ns = pts[n][1].namespace('ns0')
                 h.setPrefix(ns[0], ns[1])
@@ -412,14 +414,14 @@ class Binding:
         @return: the soap body fragment.
         @rtype: L{Element}
         """
-        env_ns = self.wsdl.options.envns
-        body = Element('Body', ns=env_ns)
+        body = Element('Body', ns=envns)
         body.append(content)
         return body
 
     def bodypart_types(self, method, input=True):
         """
-        Get a list of I{parameter definitions} (pdef) defined for the specified method.
+        Get a list of I{parameter definitions} (pdef) defined for the specified
+        method.
         Each I{pdef} is a tuple (I{name}, L{xsd.sxbase.SchemaObject})
         @param method: A service method.
         @type method: I{service.Method}
@@ -454,7 +456,8 @@ class Binding:
 
     def headpart_types(self, method, input=True):
         """
-        Get a list of I{parameter definitions} (pdef) defined for the specified method.
+        Get a list of I{parameter definitions} (pdef) defined for the specified
+        method.
         Each I{pdef} is a tuple (I{name}, L{xsd.sxbase.SchemaObject})
         @param method: A service method.
         @type method: I{service.Method}
@@ -537,4 +540,3 @@ class PartElement(SchemaElement):
             return self
         else:
             return self.__resolved
-
