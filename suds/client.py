@@ -22,7 +22,8 @@ See I{README.txt}
 import suds
 import suds.metrics as metrics
 from http.cookiejar import CookieJar
-from suds import *
+from suds import (TypeNotFound, BuildError, ServiceNotFound, PortNotFound,
+                  MethodNotFound, WebFault)
 from suds.reader import DefinitionsReader
 from suds.transport import TransportError, Request
 from suds.transport.https import HttpAuthenticated
@@ -30,16 +31,13 @@ from suds.transport.twisted_transport import TwistedTransport
 from suds.servicedefinition import ServiceDefinition
 from suds import sudsobject
 from .sudsobject import Factory as InstFactory
-from .sudsobject import Object
 from suds.resolver import PathResolver
 from suds.builder import Builder
 from suds.wsdl import Definitions
 from suds.cache import ObjectCache
-from suds.sax.document import Document
 from suds.sax.parser import Parser
 from suds.options import Options
 from suds.properties import Unskin
-from urllib.parse import urlparse
 from copy import deepcopy
 from suds.plugin import PluginContainer
 from logging import getLogger
@@ -107,10 +105,10 @@ class Client(object):
         @see: L{Options}
         """
         self.url          = url
-        options           = Options()
+        options = Options()
         options.transport = TwistedTransport()
-        self.options      = options
-        options.cache     = ObjectCache(days = 1)
+        self.options = options
+        options.cache = ObjectCache(days=1)
         self.factory      = None
         self.service      = None
         self.sd           = []
@@ -204,7 +202,14 @@ class Client(object):
         return clone
 
     def __str__(self):
-        return str(self)
+        s = ['\n']
+        build = suds.__build__.split()
+        s.append('Suds ( https://fedorahosted.org/suds/ )')
+        s.append('  version: %s' % suds.__version__)
+        s.append(' %s  build: %s' % (build[0], build[1]))
+        for sd in self.sd:
+            s.append('\n\n%s' % sd)
+        return ''.join(s)
 
     def __unicode__(self):
         s = ['\n']
@@ -213,7 +218,18 @@ class Client(object):
         s.append('  version: %s' % suds.__version__)
         s.append(' %s  build: %s' % (build[0], build[1]))
         for sd in self.sd:
-            s.append('\n\n%s' % str(sd))
+            s.append('\n\n%s' % sd)
+        return ''.join(s)
+
+    def html(self):
+        s = ['']
+        build = suds.__build__.split()
+        s.append('<h1>Suds <small>(')
+        s.append('  version: %s' % suds.__version__)
+        s.append(' %s  build: %s' % (build[0], build[1]))
+        s.append(')</small></h1>')
+        for sd in self.sd:
+            s.append('<hr/>%s' % sd.html())
         return ''.join(s)
 
 
@@ -613,17 +629,15 @@ class SoapClient:
         binding = self.method.binding.input
         soapenv = binding.get_message(self.method, args, kwargs)
         timer.stop()
-        metrics.log.debug(
-                "message for '%s' created: %s",
-                self.method.name,
-                timer)
+        metrics.log.debug("message for '%s' created: %s",
+                          self.method.name,
+                          timer)
         timer.start()
         result = yield self.send(soapenv)
         timer.stop()
-        metrics.log.debug(
-                "method '%s' invoked: %s",
-                self.method.name,
-                timer)
+        metrics.log.debug("method '%s' invoked: %s",
+                          self.method.name,
+                          timer)
         defer.returnValue(result)
 
     @defer.inlineCallbacks
@@ -667,13 +681,13 @@ class SoapClient:
 
             reply = yield transport.send(request)
 
-            ctx = plugins.message.received(reply = reply.message)
+            ctx = plugins.message.received(reply=reply.message)
             if retxml:
                 result = ctx.reply
             else:
                 result = self.succeeded(binding, ctx.reply)
         except TransportError as e:
-            if e.httpcode in (202,204):
+            if e.httpcode in (202, 204):
                 result = None
             else:
                 log.error(self.last_sent())
@@ -687,10 +701,11 @@ class SoapClient:
         @rtype: dict
         """
         action = self.method.soap.action
-        if isinstance(action, str):
-            action = action.encode('utf-8')
-        stock = { 'Content-Type' : 'text/xml; charset=utf-8', 'SOAPAction': action }
-        result = dict(stock, **self.options.headers)
+        result = {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'SOAPAction': action
+        }
+        result.update(self.options.headers)
         log.debug('headers = %s', result)
         return result
 
@@ -727,7 +742,7 @@ class SoapClient:
         @param error: The http error message
         @type error: L{transport.TransportError}
         """
-        status, reason = (error.httpcode, tostr(error))
+        status, reason = (error.httpcode, suds.tostr(error))
         reply = error.fp.read()
         log.debug('http failed:\n%s', reply)
         if status == 500:
@@ -773,7 +788,7 @@ class SimClient(SoapClient):
     @classmethod
     def simulation(cls, kwargs):
         """ get whether loopback has been specified in the I{kwargs}. """
-        return SimClient.injkey in kwargs
+        return SimClient.injkey in kwargs.keys()
 
     def invoke(self, args, kwargs):
         """

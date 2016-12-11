@@ -18,7 +18,7 @@
 Suds basic options classes.
 """
 
-from suds.properties import *
+from suds.properties import AutoLinker, Unskin, Skin, Definition
 from suds.wsse import Security
 from suds.xsd.doctor import Doctor
 from suds.transport import Transport
@@ -99,16 +99,9 @@ class Options(Skin):
                 - default: 0
         - B{plugins} - A plugin container.
                 - type: I{list}
-        - B{nosend} - Create the soap envelope but don't send.
-            When specified, method invocation returns a I{RequestContext}
-            instead of sending it.
-                - type: I{bool}
-                - default: False
     """
     def __init__(self, **kwargs):
         domain = __name__
-        default_envns = ('SOAP-ENV', 'http://schemas.xmlsoap.org/soap/envelope/')
-
         definitions = [
             Definition('cache', Cache, NoCache()),
             Definition('faults', bool, True),
@@ -116,7 +109,6 @@ class Options(Skin):
             Definition('service', (int, str), None),
             Definition('port', (int, str), None),
             Definition('location', str, None),
-            Definition('envns', tuple, default_envns),
             Definition('soapheaders', (), ()),
             Definition('wsse', Security, None),
             Definition('doctor', Doctor, None),
@@ -127,6 +119,5 @@ class Options(Skin):
             Definition('autoblend', bool, False),
             Definition('cachingpolicy', int, 0),
             Definition('plugins', (list, tuple), []),
-            Definition('nosend', bool, False),
         ]
         Skin.__init__(self, domain, definitions, kwargs)

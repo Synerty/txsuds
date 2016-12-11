@@ -46,12 +46,12 @@ class StringResponseConsumer(Protocol):
         self._finished.callback(self)
 
 
+@implementer(IBodyProducer)
 class StringProducer(object):
     """
     Simple wrapper around a string that will produce that string with the correct
     interface.
     """
-    implements(IBodyProducer)
 
     def __init__(self, body):
         self.body   = body

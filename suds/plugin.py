@@ -1,6 +1,6 @@
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the (LGPL) GNU Lesser General Public License as
-# published by the Free Software Foundation; either version 3 of the 
+# published by the Free Software Foundation; either version 3 of the
 # License, or (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
@@ -19,9 +19,7 @@ The plugin module provides classes for implementation
 of suds plugins.
 """
 
-from suds import *
 from logging import getLogger
-import collections
 
 log = getLogger(__name__)
 
@@ -52,7 +50,7 @@ class DocumentContext(Context):
     """
     pass
 
-        
+
 class MessageContext(Context):
     """
     The context for sending the soap envelope.
@@ -75,7 +73,7 @@ class InitPlugin(Plugin):
     """
     The base class for suds I{init} plugins.
     """
-    
+
     def initialized(self, context):
         """
         Suds client initialization.
@@ -91,17 +89,17 @@ class DocumentPlugin(Plugin):
     """
     The base class for suds I{document} plugins.
     """
-    
-    def loaded(self, context): 
+
+    def loaded(self, context):
         """
-        Suds has loaded a WSDL/XSD document.  Provides the plugin 
-        with an opportunity to inspect/modify the unparsed document. 
-        Called after each WSDL/XSD document is loaded. 
-        @param context: The document context. 
-        @type context: L{DocumentContext} 
+        Suds has loaded a WSDL/XSD document.  Provides the plugin
+        with an opportunity to inspect/modify the unparsed document.
+        Called after each WSDL/XSD document is loaded.
+        @param context: The document context.
+        @type context: L{DocumentContext}
         """
-        pass 
-    
+        pass
+
     def parsed(self, context):
         """
         Suds has parsed a WSDL/XSD document.  Provides the plugin
@@ -117,7 +115,7 @@ class MessagePlugin(Plugin):
     """
     The base class for suds I{soap message} plugins.
     """
-    
+
     def marshalled(self, context):
         """
         Suds will send the specified soap envelope.
@@ -128,7 +126,7 @@ class MessagePlugin(Plugin):
         @type context: L{MessageContext}
         """
         pass
-    
+
     def sending(self, context):
         """
         Suds will send the specified soap envelope.
@@ -139,7 +137,7 @@ class MessagePlugin(Plugin):
         @type context: L{MessageContext}
         """
         pass
-    
+
     def received(self, context):
         """
         Suds has received the specified reply.
@@ -150,7 +148,7 @@ class MessagePlugin(Plugin):
         @type context: L{MessageContext}
         """
         pass
-    
+
     def parsed(self, context):
         """
         Suds has sax parsed the received reply.
@@ -161,7 +159,7 @@ class MessagePlugin(Plugin):
         @type context: L{MessageContext}
         """
         pass
-    
+
     def unmarshalled(self, context):
         """
         Suds has unmarshalled the received reply.
@@ -173,7 +171,7 @@ class MessagePlugin(Plugin):
         """
         pass
 
-    
+
 class PluginContainer:
     """
     Plugin container provides easy method invocation.
@@ -182,20 +180,20 @@ class PluginContainer:
     @cvar ctxclass: A dict of plugin method / context classes.
     @type ctxclass: dict
     """
-    
-    domains = {\
+
+    domains = {
         'init': (InitContext, InitPlugin),
         'document': (DocumentContext, DocumentPlugin),
-        'message': (MessageContext, MessagePlugin ),
+        'message': (MessageContext, MessagePlugin),
     }
-    
+
     def __init__(self, plugins):
         """
         @param plugins: A list of plugin objects.
         @type plugins: [L{Plugin},]
         """
         self.plugins = plugins
-    
+
     def __getattr__(self, name):
         domain = self.domains.get(name)
         if domain:
@@ -207,8 +205,8 @@ class PluginContainer:
             return PluginDomain(ctx, plugins)
         else:
             raise Exception('plugin domain (%s), invalid' % name)
-        
-        
+
+
 class PluginDomain:
     """
     The plugin domain.
@@ -217,11 +215,11 @@ class PluginDomain:
     @ivar plugins: A list of plugins (targets).
     @type plugins: list
     """
-    
+
     def __init__(self, ctx, plugins):
         self.ctx = ctx
         self.plugins = plugins
-    
+
     def __getattr__(self, name):
         return Method(name, self)
 
@@ -244,14 +242,14 @@ class Method:
         """
         self.name = name
         self.domain = domain
-            
+
     def __call__(self, **kwargs):
         ctx = self.domain.ctx()
         ctx.__dict__.update(kwargs)
         for plugin in self.domain.plugins:
             try:
                 method = getattr(plugin, self.name, None)
-                if method and isinstance(method, collections.Callable):
+                if method and callable(method):
                     method(ctx)
             except Exception as pe:
                 log.exception(pe)

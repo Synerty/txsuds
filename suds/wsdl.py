@@ -21,8 +21,7 @@ found in the document.
 """
 
 from logging import getLogger
-from suds import *
-from suds.sax import splitPrefix
+from suds import objid, TypeNotFound, MethodNotFound
 from suds.sax.element import Element
 from suds.bindings.document import Document
 from suds.bindings.rpc import RPC, Encoded
@@ -30,7 +29,7 @@ from suds.xsd import qualify, Namespace
 from suds.xsd.schema import Schema, SchemaCollection
 from suds.xsd.query import ElementQuery
 from suds.sudsobject import Object, Facade, Metadata
-from suds.reader import DocumentReader, DefinitionsReader
+from suds.reader import DocumentReader
 from urllib.parse import urljoin
 import re
 
@@ -182,7 +181,8 @@ class Definitions(WObject):
         """ Add child objects using the factory """
         for c in root.getChildren(ns=wsdlns):
             child = Factory.create(c, self)
-            if child is None: continue
+            if child is None:
+                continue
             self.children.append(child)
             if isinstance(child, Import):
                 self.imports.append(child)
@@ -222,7 +222,7 @@ class Definitions(WObject):
             for root in t.contents():
                 schema = Schema(root, self.url, self.options, container)
                 container.add(schema)
-        if not len(container): # empty
+        if not len(container):  # empty
             root = Element.buildPath(self.root, 'types/schema')
             schema = Schema(root, self.url, self.options, container)
             container.add(schema)
@@ -234,14 +234,14 @@ class Definitions(WObject):
     def add_methods(self, service):
         """ Build method view for service """
         bindings = {
-            'document/literal' : Document(self),
-            'rpc/literal' : RPC(self),
-            'rpc/encoded' : Encoded(self)
+            'document/literal': Document(self),
+            'rpc/literal': RPC(self),
+            'rpc/encoded': Encoded(self)
         }
         for p in service.ports:
             binding = p.binding
             ptype = p.binding.type
-            operations = list(p.binding.type.operations.values())
+            operations = p.binding.type.operations.values()
             for name in [op.name for op in operations]:
                 m = Facade('Method')
                 m.name = name
@@ -258,8 +258,8 @@ class Definitions(WObject):
 
     def set_wrapped(self):
         """ set (wrapped|bare) flag on messages """
-        for b in list(self.bindings.values()):
-            for op in list(b.operations.values()):
+        for b in self.bindings.values():
+            for op in b.operations.values():
                 for body in (op.soap.input.body, op.soap.output.body):
                     body.wrapped = False
                     if len(body.parts) != 1:
@@ -382,10 +382,10 @@ class Types(WObject):
         return self.definitions.schema
 
     def local(self):
-        return ( self.definitions.schema is None )
+        return self.definitions.schema is None
 
     def imported(self):
-        return ( not self.local() )
+        return not self.local()
 
     def __gt__(self, other):
         return isinstance(other, Import)
@@ -495,7 +495,7 @@ class PortType(NamedObject):
         @param definitions: A definitions object.
         @type definitions: L{Definitions}
         """
-        for op in list(self.operations.values()):
+        for op in self.operations.values():
             if op.input is None:
                 op.input = Message(Element('no-input'), definitions)
             else:
@@ -532,7 +532,7 @@ class PortType(NamedObject):
         """
         try:
             return self.operations[name]
-        except Exception as e:
+        except Exception:
             raise MethodNotFound(name)
 
     def __gt__(self, other):
@@ -569,7 +569,7 @@ class Binding(NamedObject):
     def soaproot(self):
         """ get the soap:binding """
         for ns in (soapns, soap12ns):
-            sr =  self.root.getChild('binding', ns=ns)
+            sr = self.root.getChild('binding', ns=ns)
             if sr is not None:
                 return sr
         return None
@@ -667,7 +667,7 @@ class Binding(NamedObject):
         @type definitions: L{Definitions}
         """
         self.resolveport(definitions)
-        for op in list(self.operations.values()):
+        for op in self.operations.values():
             self.resolvesoapbody(definitions, op)
             self.resolveheaders(definitions, op)
             self.resolvefaults(definitions, op)
@@ -778,7 +778,7 @@ class Binding(NamedObject):
             raise MethodNotFound(name)
 
     def __gt__(self, other):
-        return ( not isinstance(other, Service) )
+        return not isinstance(other, Service)
 
 
 class Port(NamedObject):
@@ -866,7 +866,7 @@ class Service(NamedObject):
         @type names: [str,..]
         """
         for p in self.ports:
-            for m in list(p.methods.values()):
+            for m in p.methods.values():
                 if names is None or m.name in names:
                     m.location = url
 
@@ -901,14 +901,13 @@ class Factory:
     @type tags: dict
     """
 
-    tags =\
-    {
-        'import' : Import,
-        'types' : Types,
-        'message' : Message,
-        'portType' : PortType,
-        'binding' : Binding,
-        'service' : Service,
+    tags = {
+        'import': Import,
+        'types': Types,
+        'message': Message,
+        'portType': PortType,
+        'binding': Binding,
+        'service': Service,
     }
 
     @classmethod

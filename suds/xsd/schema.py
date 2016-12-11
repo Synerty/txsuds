@@ -23,13 +23,11 @@ tranparent referenced type resolution and targeted denormalization.
 """
 
 
-import suds.metrics
-from suds import *
-from suds.xsd import *
-from suds.xsd.sxbuiltin import *
+from suds import objid, Repr
+from suds.xsd import isqref
+from suds.xsd.sxbuiltin import Factory
+from suds.compat import unicode
 from suds.xsd.sxbasic import Factory as BasicFactory
-from suds.xsd.sxbuiltin import Factory as BuiltinFactory
-from suds.xsd.sxbase import SchemaObject
 from suds.xsd.deplist import DepList
 from suds.sax.element import Element
 from suds.sax import splitPrefix, Namespace
@@ -51,7 +49,6 @@ class SchemaCollection:
     @type children: [L{Schema},...]
     @ivar namespaces: A dictionary of contained schemas by namespace.
     @type namespaces: {str:L{Schema}}
-    @ivar importCache: Dictionary that stores Schema instances by URL.
     """
 
     def __init__(self, wsdl):
@@ -62,7 +59,6 @@ class SchemaCollection:
         self.wsdl = wsdl
         self.children = []
         self.namespaces = {}
-        self.importCache = {}
 
     def add(self, schema):
         """
@@ -113,11 +109,11 @@ class SchemaCollection:
         @return: self
         @rtype: L{SchemaCollection}
         """
-        namespaces = list(self.namespaces.keys())
+        namespaces = self.namespaces.keys()
         for s in self.children:
             for ns in namespaces:
                 tns = s.root.get('targetNamespace')
-                if  tns == ns:
+                if tns == ns:
                     continue
                 for imp in s.root.getChildren('import'):
                     if imp.get('namespace') == ns:
@@ -156,7 +152,10 @@ class SchemaCollection:
         return len(self.children)
 
     def __str__(self):
-        return str(self).encode('utf-8')
+        result = ['\nschema collection']
+        for s in self.children:
+            result.append(s.str(1))
+        return '\n'.join(result)
 
     def __unicode__(self):
         result = ['\nschema collection']
@@ -228,7 +227,13 @@ class Schema:
         if form is None:
             self.form_qualified = False
         else:
-            self.form_qualified = ( form == 'qualified' )
+            self.form_qualified = form == 'qualified'
+        if container is None:
+            self.build()
+            self.open_imports(options)
+            log.debug('built:\n%s', self)
+            self.dereference()
+            log.debug('dereferenced:\n%s', self)
 
     def mktns(self):
         """
@@ -262,32 +267,32 @@ class Schema:
     def merge(self, schema):
         """
         Merge the contents from the schema.  Only objects not already contained
-        in this schema's collections are merged.  This is to provide for bidirectional
-        import which produce cyclic includes.
+        in this schema's collections are merged.  This is to provide for
+        bidirectional import which produce cyclic includes.
         @returns: self
         @rtype: L{Schema}
         """
-        for item in list(schema.attributes.items()):
+        for item in schema.attributes.items():
             if item[0] in self.attributes:
                 continue
             self.all.append(item[1])
             self.attributes[item[0]] = item[1]
-        for item in list(schema.elements.items()):
+        for item in schema.elements.items():
             if item[0] in self.elements:
                 continue
             self.all.append(item[1])
             self.elements[item[0]] = item[1]
-        for item in list(schema.types.items()):
+        for item in schema.types.items():
             if item[0] in self.types:
                 continue
             self.all.append(item[1])
             self.types[item[0]] = item[1]
-        for item in list(schema.groups.items()):
+        for item in schema.groups.items():
             if item[0] in self.groups:
                 continue
             self.all.append(item[1])
             self.groups[item[0]] = item[1]
-        for item in list(schema.agrps.items()):
+        for item in schema.agrps.items():
             if item[0] in self.agrps:
                 continue
             self.all.append(item[1])
@@ -305,17 +310,11 @@ class Schema:
         @type options: L{options.Options}
         """
         for imp in self.imports:
-            if imp.url in self.container.importCache:
-                imported = self.container.importCache[imp.url]
-            else:
-                # NOTE: This could cause a download.
-                imported = yield imp.open(options)
-                if imported is None:
-                    continue
-                yield imported.open_imports(options)
-
-            # Since our children are not part of the top level collection,
-            # we need to merge them into ourselves after they are opened.
+            imported = yield imp.open(options)
+            if imported is None:
+                continue
+            yield imported.open_imports(options)
+            log.debug('imported:\n%s', imported)
             self.merge(imported)
 
     def dereference(self):
@@ -335,7 +334,8 @@ class Schema:
             indexes[x] = midx
         for x, deps in deplist.sort():
             midx = indexes.get(x)
-            if midx is None: continue
+            if midx is None:
+                continue
             d = deps[midx]
             log.debug('(%s) merging %s <== %s', self.tns[1], Repr(x), Repr(d))
             x.merge(d)
@@ -366,7 +366,7 @@ class Schema:
         if ref is None:
             return True
         else:
-            return ( not self.builtin(ref, context) )
+            return not self.builtin(ref, context)
 
     def builtin(self, ref, context=None):
         """
@@ -380,12 +380,12 @@ class Schema:
         try:
             if isqref(ref):
                 ns = ref[1]
-                return ( ref[0] in Factory.tags and ns.startswith(w3) )
+                return ref[0] in Factory.tags and ns.startswith(w3)
             if context is None:
                 context = self.root
             prefix = splitPrefix(ref)[0]
             prefixes = context.findPrefixes(w3, 'startswith')
-            return ( prefix in prefixes and ref[0] in Factory.tags )
+            return prefix in prefixes and ref[0] in Factory.tags
         except:
             return False
 
@@ -403,14 +403,10 @@ class Schema:
         @rtype: L{Schema}
         @note: This is only used by Import children.
         """
-        # Construct a new schema object for the given element and add it to
-        # our top level container's cache.
-        schema = Schema(root, baseurl, options, self.container)
-        self.container.importCache[baseurl] = schema
-        return schema
+        return Schema(root, baseurl, options)
 
     def str(self, indent=0):
-        tab = '%*s'%(indent*3, '')
+        tab = '%*s' % (indent * 3, '')
         result = []
         result.append('%s%s' % (tab, self.id))
         result.append('%s(raw)' % tab)
@@ -426,10 +422,7 @@ class Schema:
         return myrep.encode('utf-8')
 
     def __str__(self):
-        return str(self).encode('utf-8')
+        return self.str()
 
     def __unicode__(self):
         return self.str()
-
-
-

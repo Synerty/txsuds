@@ -17,14 +17,14 @@
 """
 Contains xml document reader classes.
 """
-
+import hashlib
+from logging import getLogger
 
 from suds.sax.parser import Parser
 from suds.transport import Request
-from suds.cache import Cache, NoCache
+from suds.cache import NoCache
 from suds.store import DocumentStore
 from suds.plugin import PluginContainer
-from logging import getLogger
 
 from twisted.internet import defer
 
@@ -52,7 +52,7 @@ class Reader:
         Mangle the name by hashing the I{name} and appending I{x}.
         @return: the mangled name.
         """
-        h = abs(hash(name))
+        h = hashlib.md5(name.encode('utf8')).hexdigest()
         return '%s-%s' % (h, x)
 
 

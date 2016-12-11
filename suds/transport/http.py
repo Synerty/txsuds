@@ -18,11 +18,12 @@
 Contains classes for basic HTTP transport implementations.
 """
 
-import base64
+import urllib.request as u2
+from urllib.error import HTTPError
+from base64 import b64encode
 import socket
-from suds.transport import *
+from suds.transport import Transport, TransportError, Reply
 from suds.properties import Unskin
-from urllib.parse import urlparse
 from http.cookiejar import CookieJar
 from logging import getLogger
 
@@ -55,11 +56,12 @@ class HttpTransport(Transport):
     def open(self, request):
         try:
             url = request.url
+            headers = request.headers
             log.debug('opening (%s)', url)
-            u2request = urllib.request.Request(url)
+            u2request = u2.Request(url, None, headers)
             self.proxy = self.options.proxy
             return self.u2open(u2request)
-        except urllib.error.HTTPError as e:
+        except HTTPError as e:
             raise TransportError(str(e), e.code, e.fp)
 
     def send(self, request):
@@ -68,20 +70,17 @@ class HttpTransport(Transport):
         msg = request.message
         headers = request.headers
         try:
-            u2request = urllib.request.Request(url, msg, headers)
+            u2request = u2.Request(url, msg, headers)
             self.addcookies(u2request)
             self.proxy = self.options.proxy
             request.headers.update(u2request.headers)
             log.debug('sending:\n%s', request)
             fp = self.u2open(u2request)
             self.getcookies(fp, u2request)
-            result = Reply(200, fp.headers.dict, fp.read())
-            #print "FP:", fp
-            #print "H:", fp.headers.__class__
-            #print "D:", fp.headers.dict
+            result = Reply(200, fp.headers, fp.read())
             log.debug('received:\n%s', result)
-        except urllib.error.HTTPError as e:
-            if e.code in (202,204):
+        except HTTPError as e:
+            if e.code in (202, 204):
                 result = None
             else:
                 raise TransportError(e.msg, e.code, e.fp)
@@ -126,7 +125,7 @@ class HttpTransport(Transport):
         @rtype: I{OpenerDirector}
         """
         if self.urlopener is None:
-            return urllib.request.build_opener(*self.u2handlers())
+            return u2.build_opener(*self.u2handlers())
         else:
             return self.urlopener
 
@@ -137,7 +136,7 @@ class HttpTransport(Transport):
         @rtype: [Handler,...]
         """
         handlers = []
-        handlers.append(urllib.request.ProxyHandler(self.proxy))
+        handlers.append(u2.ProxyHandler(self.proxy))
         return handlers
 
     def u2ver(self):
@@ -147,7 +146,7 @@ class HttpTransport(Transport):
         @rtype: float
         """
         try:
-            part = urllib2.__version__.split('.', 1)
+            part = u2.__version__.split('.', 1)
             n = float('.'.join(part))
             return n
         except Exception as e:
@@ -181,8 +180,8 @@ class HttpAuthenticated(HttpTransport):
     def addcredentials(self, request):
         credentials = self.credentials()
         if not (None in credentials):
-            encoded = base64.encodestring(':'.join(credentials))
-            basic = 'Basic %s' % encoded[:-1]
+            encoded = b64encode(':'.join(credentials).encode('utf-8')).decode("ascii")
+            basic = 'Basic %s' % encoded
             request.headers['Authorization'] = basic
 
     def credentials(self):
