@@ -20,20 +20,20 @@ setup_logging()
 def main():
    try:
        url = 'https://sec.neurofuzz-software.com/paos/genSSHA-SOAP.php?wsdl'
-       print 'Test @ ( %s )' % (url)
+       print('Test @ ( %s )' % (url))
        client = Client(url)
        yield client.connect()
-       print client
+       print(client)
        res = yield client.service.genSSHA('hello', 'sha1')
-       print res
-   except WebFault, f:
-       print f
-       print f.fault
-   except Exception, e:
-       print e
+       print(res)
+   except WebFault as f:
+       print(f)
+       print(f.fault)
+   except Exception as e:
+       print(e)
        tb.print_exc()
 
-   print '\nFinished'
+   print('\nFinished')
    reactor.stop()
 
 
