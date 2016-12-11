@@ -1,6 +1,6 @@
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the (LGPL) GNU Lesser General Public License as
-# published by the Free Software Foundation; either version 3 of the 
+# published by the Free Software Foundation; either version 3 of the
 # License, or (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
@@ -19,15 +19,14 @@ Provides XML I{document} classes.
 """
 
 from logging import getLogger
-from suds import *
-from suds.sax import *
 from suds.sax.element import Element
 
 log = getLogger(__name__)
 
+
 class Document(Element):
     """ simple document """
-    
+
     DECL = '<?xml version="1.0" encoding="UTF-8"?>'
 
     def __init__(self, root=None):
@@ -36,45 +35,27 @@ class Document(Element):
             self.append(root)
 
     def root(self):
-        """
-        Get the document root element (can be None)
-        @return: The document root.
-        @rtype: L{Element}
-        """
         if len(self.children):
             return self.children[0]
         else:
             return None
-        
+
     def str(self):
-        """
-        Get a string representation of this XML fragment.
-        @return: A I{pretty} string.
-        @rtype: basestring
-        """
         s = []
         s.append(self.DECL)
-        root = self.root()
-        if root is not None:
-            s.append('\n')
-            s.append(root.str())
+        s.append('\n')
+        if self.root() is not None:
+            s.append(self.root().str())
         return ''.join(s)
-    
+
     def plain(self):
-        """
-        Get a string representation of this XML fragment.
-        @return: A I{plain} string.
-        @rtype: basestring
-        """
         s = []
         s.append(self.DECL)
-        root = self.root()
-        if root is not None:
-            s.append(root.plain())
+        s.append(self.root().plain())
         return ''.join(s)
 
     def __str__(self):
-        return str(self).encode('utf-8')
-    
+        return self.str()
+
     def __unicode__(self):
         return self.str()
