@@ -25,11 +25,8 @@ fi
 
 echo "Setting version to $VER"
 
-# Update the setup.py
-sed -i "s;^package_version.*=.*;package_version = '${VER}';"  setup.py
-
 # Update the package version
-sed -i "s;.*version.*;__version__ = '${VER}';" ${PACKAGE}/__init__.py
+sed -i "s;.*version.*;__version__ = '${VER}';" suds/__init__.py
 
 # Upload to test pypi
 python setup.py sdist upload -r pypitest

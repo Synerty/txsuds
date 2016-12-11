@@ -1,4 +1,13 @@
 OVERVIEW
+========
+suds-py3 v'1.3.2.0' patched for twisted. This is basically a merge of :
+https://github.com/cackharot/suds-py3
+and
+https://github.com/aronbierbaum/txsuds
+
+
+ABOUT SUDS
+==========
 
 The "Suds" web services client is a lightweight soap-based client for python
 the is licensed under LGPL.
