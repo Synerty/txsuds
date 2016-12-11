@@ -16,18 +16,18 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 # written by: Jeff Ortel ( jortel@redhat.com )
 
-import sys
-import suds
 from setuptools import setup, find_packages
 
+import suds
+
 setup(
-    name="suds",
+    name="txsuds-py3",
     version=suds.__version__,
     description="Lightweight SOAP client",
     author="Jeff Ortel",
     author_email="jortel@redhat.com",
-    maintainer="Jeff Ortel",
-    maintainer_email="jortel@redhat.com",
+    maintainer="Synerty",
+    maintainer_email="contact@synerty.com",
     packages=find_packages(exclude=['tests']),
-    url="https://fedorahosted.org/suds",
+    url="https://github.com/Synerty/txsuds-py3",
 )
