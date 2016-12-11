@@ -1,6 +1,6 @@
 import os
-import urllib
-import urlparse
+import urllib.request, urllib.parse, urllib.error
+import urllib.parse
 
 from twisted.internet            import defer, reactor
 from twisted.internet.endpoints  import TCP4ClientEndpoint
@@ -159,7 +159,7 @@ class TwistedTransport(Transport):
         """
         # Copy the headers from the request.
         headers = Headers()
-        for (key, value) in request.headers.iteritems():
+        for (key, value) in request.headers.items():
             headers.addRawHeader(key, value)
 
         # If a username and password are given, then add basic authentication.
@@ -170,7 +170,7 @@ class TwistedTransport(Transport):
             headers.addRawHeader('Authorization', 'Basic ' + auth)
 
         # Determine if the user has configured a proxy server.
-        url_parts = urlparse.urlparse(request.url)
+        url_parts = urllib.parse.urlparse(request.url)
         proxy = self.options.proxy.get(url_parts.scheme, None)
 
         # Construct an agent to send the request.
@@ -218,9 +218,9 @@ class TwistedTransport(Transport):
         @raise TransportError: On all transport errors.
         """
         if request.url.startswith("file://"):
-            url_parts   = urlparse.urlparse(request.url)
+            url_parts   = urllib.parse.urlparse(request.url)
             full_path   = os.path.join(url_parts.netloc, url_parts.path)
-            local_fname = urllib.url2pathname(full_path)
+            local_fname = urllib.request.url2pathname(full_path)
 
             with open(local_fname, "rb") as local_file:
                 content = local_file.read()

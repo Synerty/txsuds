@@ -29,7 +29,7 @@ def optionsForClientTLS(hostname, trustRoot=None, clientCertificate=None, **kw):
                 arg=kw.popitem()[0]
             )
         )
-    if not isinstance(hostname, unicode):
+    if not isinstance(hostname, str):
         raise TypeError(
             "optionsForClientTLS requires text for host names, not "
             + hostname.__class__.__name__

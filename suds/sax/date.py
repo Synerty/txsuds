@@ -49,10 +49,10 @@ class Date:
         if isinstance(date, dt.date):
             self.date = date
             return
-        if isinstance(date, basestring):
+        if isinstance(date, str):
             self.date = self.__parse(date)
             return
-        raise ValueError, type(date)
+        raise ValueError(type(date))
 
     def year(self):
         """
@@ -101,10 +101,10 @@ class Date:
             return dt.date(year, month, day)
         except:
             log.debug(s, exec_info=True)
-            raise ValueError, 'Invalid format "%s"' % s
+            raise ValueError('Invalid format "%s"' % s)
 
     def __str__(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
         return self.date.isoformat()
@@ -138,10 +138,10 @@ class Time:
         if isinstance(time, dt.time):
             self.time = time
             return
-        if isinstance(time, basestring):
+        if isinstance(time, str):
             self.time = self.__parse(time)
             return
-        raise ValueError, type(time)
+        raise ValueError(type(time))
 
     def hour(self):
         """
@@ -209,7 +209,7 @@ class Time:
                 return dt.time(hour, minute, second, ms, tzinfo = timezone)
         except:
             log.debug(s, exec_info=True)
-            raise ValueError, 'Invalid format "%s"' % s
+            raise ValueError('Invalid format "%s"' % s)
 
     def __second(self, s):
         """
@@ -244,7 +244,7 @@ class Time:
         raise Exception()
 
     def __str__(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
         return self.time.isoformat()
@@ -275,17 +275,17 @@ class DateTime(Date,Time):
             self.datetime = \
                 dt.datetime.combine(self.date, self.time)
             return
-        if isinstance(date, basestring):
+        if isinstance(date, str):
             part = date.split('T')
             Date.__init__(self, part[0])
             Time.__init__(self, part[1], 0)
             self.datetime = \
                 dt.datetime.combine(self.date, self.time)
             return
-        raise ValueError, type(date)
+        raise ValueError(type(date))
 
     def __str__(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
         s = []
