@@ -167,7 +167,7 @@ class TwistedTransport(Transport):
             self.options.password is not None):
             auth = "%s:%s" % (self.options.username, self.options.password)
             auth = auth.encode("base64").strip()
-            headers.addRawHeader('Authorization', 'Basic ' + auth)
+            headers.addRawHeader(b'Authorization', b'Basic ' + auth)
 
         # Determine if the user has configured a proxy server.
         url_parts = urllib.parse.urlparse(request.url)
