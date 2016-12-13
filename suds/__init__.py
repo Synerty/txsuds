@@ -194,4 +194,3 @@ def objid(obj):
     return obj.__class__.__name__ + ':' + hex(id(obj))
 
 
-from .client import Client
