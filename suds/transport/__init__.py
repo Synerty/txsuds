@@ -68,7 +68,7 @@ class Reply:
     @type headers: dict
     """
 
-    def __init__(self, code, headers, message):
+    def __init__(self, code: int, headers: dict, message: str):
         """
         @param code: The http code returned.
         @type code: int

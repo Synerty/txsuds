@@ -1,22 +1,23 @@
 import os
-import urllib.request, urllib.parse, urllib.error
+import urllib.error
 import urllib.parse
+import urllib.parse
+import urllib.request
 
-from twisted.internet            import defer, reactor
-from twisted.internet.endpoints  import TCP4ClientEndpoint
-from twisted.internet.protocol   import Protocol
-from twisted.web                 import http
-from twisted.web.client          import Agent, ProxyAgent, _requireSSL
-from twisted.web.http_headers    import Headers
-from twisted.web.iweb            import IBodyProducer, IPolicyForHTTPS
-from OpenSSL                     import crypto
-from zope.interface              import implements, implementer
-
-from suds.transport           import Reply, Transport
+from OpenSSL import crypto
+from suds.transport import Reply, Transport
 from suds.transport.sslverify import optionsForClientTLS
+from twisted.internet import defer, reactor
+from twisted.internet.endpoints import TCP4ClientEndpoint
+from twisted.internet.protocol import Protocol
+from twisted.web import http
+from twisted.web.client import Agent, ProxyAgent, _requireSSL
+from twisted.web.http_headers import Headers
+from twisted.web.iweb import IBodyProducer, IPolicyForHTTPS
+from zope.interface import implementer
 
 
-class StringResponseConsumer(Protocol):
+class BytesResponseConsumer(Protocol):
     """
     Protocol that consumes the entire response body into a string and provides
     a simple callback interface for the user to be triggered when the response
@@ -25,17 +26,18 @@ class StringResponseConsumer(Protocol):
     @ivar response:  The response that filled us.
     @ivar _finished: Deferred that is triggered when the body is completed.
     """
+
     def __init__(self):
         self._finished = defer.Deferred()
-        self.response  = None
-        self.body      = ""
+        self.response = None
+        self.body = b""
 
     def getDeferred(self):
         """ Return the deferred that is triggered after full completion. """
         return self._finished
 
     def dataReceived(self, data):
-        self.body = self.body + data
+        self.body += data
 
     def connectionLost(self, reason):
         """ Callback to finished with copy of ourselves. """
@@ -47,14 +49,14 @@ class StringResponseConsumer(Protocol):
 
 
 @implementer(IBodyProducer)
-class StringProducer(object):
+class BytesProducer(object):
     """
     Simple wrapper around a string that will produce that string with the correct
     interface.
     """
 
-    def __init__(self, body):
-        self.body   = body
+    def __init__(self, body: bytes):
+        self.body = body
         self.length = len(body)
 
     def startProducing(self, consumer):
@@ -78,7 +80,8 @@ class PolicyForHTTPS(object):
     Custom SSL connection creator that allows specifying private key, certificate
     and custom options.
     """
-    def __init__(self, trustRoot = None, privateKey = None, certificate = None, **kwargs):
+
+    def __init__(self, trustRoot=None, privateKey=None, certificate=None, **kwargs):
         self._trustRoot = trustRoot
         self._opts = dict(kwargs)
         self._opts["privateKey"] = privateKey
@@ -95,14 +98,15 @@ class PolicyForHTTPS(object):
         @type  port:     L{int}
         """
         return optionsForClientTLS(hostname.decode("ascii"),
-                                   trustRoot = self._trustRoot,
-                                   extraCertificateOptions = self._opts)
+                                   trustRoot=self._trustRoot,
+                                   extraCertificateOptions=self._opts)
 
 
 class TwistedTransport(Transport):
     """
     Custom transport that uses the Twisted REST client.
     """
+
     def __init__(self):
         """
         Constructor.
@@ -145,11 +149,11 @@ class TwistedTransport(Transport):
                          'acceptableCiphers']:
             other_opts[opt_name] = getattr(self.options, opt_name)
 
-
-        self._httpsPolicy = PolicyForHTTPS(privateKey = priv_key,
-                                           certificate = certificate,
+        self._httpsPolicy = PolicyForHTTPS(privateKey=priv_key,
+                                           certificate=certificate,
                                            **other_opts)
         return self._httpsPolicy
+
     httpsPolicy = property(_getHttpsPolicy)
 
     @defer.inlineCallbacks
@@ -164,7 +168,7 @@ class TwistedTransport(Transport):
 
         # If a username and password are given, then add basic authentication.
         if (self.options.username is not None and
-            self.options.password is not None):
+                    self.options.password is not None):
             auth = "%s:%s" % (self.options.username, self.options.password)
             auth = auth.encode("base64").strip()
             headers.addRawHeader(b'Authorization', b'Basic ' + auth)
@@ -177,28 +181,30 @@ class TwistedTransport(Transport):
         if proxy is not None:
             (hostname, port) = proxy.split(":")
             endpoint = TCP4ClientEndpoint(reactor, hostname, int(port),
-                                          timeout = self.options.timeout)
+                                          timeout=self.options.timeout)
             agent = ProxyAgent(endpoint)
         else:
             agent = Agent(reactor, self.httpsPolicy,
-                          connectTimeout = self.options.timeout)
+                          connectTimeout=self.options.timeout)
 
         url = request.url.encode("utf-8")
-        producer = StringProducer(request.message or "")
-        response = yield agent.request(method, url, headers, producer)
+        producer = BytesProducer(request.message or b"")
+        response = yield agent.request(method.encode(),
+                                       url, headers, producer)
 
         # If the initial request returned a redirection response, attempt to follow it.
         http_redirect_codes = [http.MOVED_PERMANENTLY,  # 301
-                               http.FOUND,              # 302
-                               http.SEE_OTHER,          # 303
-                               http.TEMPORARY_REDIRECT] # 307
-        if response.code in http_redirect_codes and response.headers.hasHeader("Location"):
-            new_url  = response.headers.getRawHeaders("Location")[0]
-            producer = StringProducer(request.message or "")
+                               http.FOUND,  # 302
+                               http.SEE_OTHER,  # 303
+                               http.TEMPORARY_REDIRECT]  # 307
+        if response.code in http_redirect_codes and response.headers.hasHeader(
+                "Location"):
+            new_url = response.headers.getRawHeaders("Location")[0]
+            producer = BytesProducer(request.message or "")
             response = yield agent.request(method, new_url, headers, producer)
 
         # Construct a simple response consumer and give it the response body.
-        consumer = StringResponseConsumer()
+        consumer = BytesResponseConsumer()
         response.deliverBody(consumer)
         yield consumer.getDeferred()
         consumer.response = response
@@ -218,8 +224,8 @@ class TwistedTransport(Transport):
         @raise TransportError: On all transport errors.
         """
         if request.url.startswith("file://"):
-            url_parts   = urllib.parse.urlparse(request.url)
-            full_path   = os.path.join(url_parts.netloc, url_parts.path)
+            url_parts = urllib.parse.urlparse(request.url)
+            full_path = os.path.join(url_parts.netloc, url_parts.path)
             local_fname = urllib.request.url2pathname(full_path)
 
             with open(local_fname, "rb") as local_file:
@@ -246,6 +252,10 @@ class TwistedTransport(Transport):
         @raise TransportError: On all transport errors.
         """
         consumer = yield self._request(request, "POST")
-        res_headers = dict(consumer.response.headers.getAllRawHeaders())
-        result = Reply(consumer.response.code, res_headers, consumer.body)
+        res_headers = {}
+        for key, values in consumer.response.headers.getAllRawHeaders():
+            res_headers[key.decode()] = [v.decode() for v in values]
+        result = Reply(consumer.response.code,
+                       res_headers,
+                       consumer.body.decode())
         defer.returnValue(result)

@@ -623,6 +623,7 @@ class Include(Reference):
     def __init__(self, schema, root):
         Reference.__init__(self, schema, root)
         self.location = root.get('schemaLocation')
+        self.downloaded_schema = None
 
         # Build up the complete URL for the import.
         if self.location is not None:
@@ -640,11 +641,12 @@ class Include(Reference):
         @rtype: L{Schema}
         """
         if self.opened:
-            defer.returnValue()
-        self.opened = True
+            defer.returnValue(self.downloaded_schema)
         log.debug('%s, including location="%s"', self.id, self.location)
         result = yield self.download(options)
         log.debug('included:\n%s', result)
+        self.downloaded_schema = result
+        self.opened = True
         defer.returnValue(result)
 
     @defer.inlineCallbacks
