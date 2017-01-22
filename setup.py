@@ -18,12 +18,14 @@
 
 from setuptools import setup, find_packages
 
-import suds
+package_name = "txsuds-py3"
+package_version = '0.5.4'
 
 setup(
-    name="txsuds-py3",
-    version=suds.__version__,
-    description="Lightweight SOAP client",
+    name=package_name,
+    provides="txsuds",
+    version=package_version,
+    description="Lightweight SOAP client for Twisted + Py3",
     author="Jeff Ortel",
     author_email="jortel@redhat.com",
     maintainer="Synerty",
