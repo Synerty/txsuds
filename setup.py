@@ -19,7 +19,7 @@
 from setuptools import setup, find_packages
 
 package_name = "txsuds-py3"
-package_version = '0.5.5'
+package_version = '0.5.7'
 
 setup(
     name=package_name,
