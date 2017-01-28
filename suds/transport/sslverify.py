@@ -7,8 +7,14 @@ from twisted.python.failure import Failure
 
 from twisted.internet.ssl        import Certificate
 from twisted.internet._sslverify import (ClientTLSOptions, OpenSSLCertificateOptions,
-                                         _maybeSetHostNameIndication, SSL_CB_HANDSHAKE_START,
+                                          SSL_CB_HANDSHAKE_START,
                                          SSL_CB_HANDSHAKE_DONE)
+
+
+if getattr(SSL.Connection, "set_tlsext_host_name", None) is None:
+    _maybeSetHostNameIndication = _cantSetHostnameIndication
+else:
+    _maybeSetHostNameIndication = _setHostNameIndication
 
 
 log = logging.getLogger(__name__)
