@@ -1,7 +1,7 @@
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the (LGPL) GNU Lesser General Public License as
-__version__ = '0.5.7'
-__version__ = '0.5.7'
+__version__ = '0.5.8'
+__version__ = '0.5.8'
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,7 +25,7 @@ from .compat import basestring, unicode
 # Project properties
 #
 
-__version__ = '0.5.7'
+__version__ = '0.5.8'
 __build__ = "IN 20160428"
 
 #
@@ -81,7 +81,7 @@ class SoapHeadersNotPermitted(Exception):
 
 def smart_str(s, encoding='utf-8', errors='strict'):
     """
-__version__ = '0.5.7'
+__version__ = '0.5.8'
 
     If strings_only is True, don't convert (some) non-string-like objects.
 
