@@ -12,14 +12,13 @@ SSL_CB_HANDSHAKE_DONE = _lib.SSL_CB_HANDSHAKE_DONE
 from twisted.python.failure import Failure
 
 from twisted.internet.ssl import Certificate
-from twisted.internet._sslverify import (ClientTLSOptions, OpenSSLCertificateOptions,
-                                         _setHostNameIndication,
-                                         _cantSetHostnameIndication)
+from twisted.internet._sslverify import (ClientTLSOptions, OpenSSLCertificateOptions)
 
-if getattr(SSL.Connection, "set_tlsext_host_name", None) is None:
-    _maybeSetHostNameIndication = _cantSetHostnameIndication
-else:
-    _maybeSetHostNameIndication = _setHostNameIndication
+
+def _maybeSetHostNameIndication(connection, hostname):
+    if getattr(SSL.Connection, "set_tlsext_host_name", None) is not None:
+        connection.set_tlsext_host_name(hostname)
+
 
 log = logging.getLogger(__name__)
 
