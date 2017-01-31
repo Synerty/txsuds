@@ -2,20 +2,24 @@ import logging
 import re
 
 from OpenSSL import SSL
+from OpenSSL._util import (
+    lib as _lib,
+)
+
+SSL_CB_HANDSHAKE_START = _lib.SSL_CB_HANDSHAKE_START
+SSL_CB_HANDSHAKE_DONE = _lib.SSL_CB_HANDSHAKE_DONE
 
 from twisted.python.failure import Failure
 
-from twisted.internet.ssl        import Certificate
+from twisted.internet.ssl import Certificate
 from twisted.internet._sslverify import (ClientTLSOptions, OpenSSLCertificateOptions,
-                                          SSL_CB_HANDSHAKE_START,
-                                         SSL_CB_HANDSHAKE_DONE)
-
+                                         _setHostNameIndication,
+                                         _cantSetHostnameIndication)
 
 if getattr(SSL.Connection, "set_tlsext_host_name", None) is None:
     _maybeSetHostNameIndication = _cantSetHostnameIndication
 else:
     _maybeSetHostNameIndication = _setHostNameIndication
-
 
 log = logging.getLogger(__name__)
 
@@ -65,7 +69,7 @@ class CertMatchError(ValueError):
     pass
 
 
-def _dnsNameMatch(name, hostname, maxWildcards = 1):
+def _dnsNameMatch(name, hostname, maxWildcards=1):
     """
     Matching according to RFC 6125, section 6.4.3
     @type  name:         basestring
@@ -112,7 +116,7 @@ def _dnsNameMatch(name, hostname, maxWildcards = 1):
         # U-label of an internationalized domain name.
         pats.append(re.escape(leftmost))
     else:
-       # Otherwise, "*" matches any dotless string, e.g. www*
+        # Otherwise, "*" matches any dotless string, e.g. www*
         pats.append(re.escape(leftmost).replace(r"\*", "[^.]*"))
 
     # add the remaining fragments, ignore any wildcards
@@ -146,6 +150,7 @@ class SSLClientConnectionCreator(ClientTLSOptions):
     Extends ClientTLSOptions to allow skipping verification and to improve
     twisted's base verification.
     """
+
     def _identityVerifyingInfoCallback(self, connection, where, ret):
         """
         Override the base implementation to provide better hostname verification.
@@ -171,4 +176,3 @@ class SSLClientConnectionCreator(ClientTLSOptions):
                     f = Failure()
                     transport = connection.get_app_data()
                     transport.failVerification(f)
-
